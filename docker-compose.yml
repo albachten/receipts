@@ -7,7 +7,7 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      SECRET_KEY: change-me-to-a-long-random-string
+      SECRET_KEY: change-this-and-do-not-commit-it
       DEBUG: "False"
       ALLOWED_HOSTS: home.albachten.com
       SCRIPT_NAME: /receipts
