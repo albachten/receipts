@@ -5,13 +5,10 @@ services:
     ports:
       - "8666:8666"
     volumes:
-      - db_data:/app/data
+      - ./data:/app/data
     environment:
       SECRET_KEY: change-me-to-a-long-random-string
       DEBUG: "False"
       ALLOWED_HOSTS: home.albachten.com
       SCRIPT_NAME: /receipts
       CSRF_TRUSTED_ORIGINS: https://home.albachten.com
-
-volumes:
-  db_data:
