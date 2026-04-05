@@ -14,7 +14,12 @@
 {% endblock %}
 
 {% block content %}
-<h2>Your Events</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+  <h2 style="margin:0">Your Events</h2>
+  {% if user.is_admin %}
+    <a href="{% url 'create_event' %}" class="btn btn-primary">+ Create Event</a>
+  {% endif %}
+</div>
 
 {% if not event_data %}
   <p class="empty">No events yet.{% if not user.is_admin %} Ask an administrator to add you to one.{% endif %}</p>

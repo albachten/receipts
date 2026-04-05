@@ -332,6 +332,67 @@ def manage_users(request):
     return render(request, 'admin/manage_users.html', {'users': users, 'error': error})
 
 
+# ─── Admin: Create Event ──────────────────────────────────────────────────────
+
+@admin_required
+def create_event(request):
+    all_users = User.objects.all().order_by('username')
+    errors = []
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
+        existing_member_ids = request.POST.getlist('member_ids')
+
+        # Collect new user rows (username_0, password_0, username_1, ...)
+        new_users_data = []
+        i = 0
+        while True:
+            username = request.POST.get(f'new_username_{i}', '').strip()
+            password = request.POST.get(f'new_password_{i}', '')
+            if not username and not password:
+                break
+            new_users_data.append((i, username, password))
+            i += 1
+
+        if not name:
+            errors.append('Event name is required.')
+
+        for idx, username, password in new_users_data:
+            if not username:
+                errors.append(f'New user #{idx + 1}: username is required.')
+            elif User.objects.filter(username=username).exists():
+                errors.append(f'Username "{username}" is already taken.')
+            if not password:
+                errors.append(f'New user #{idx + 1}: password is required.')
+
+        if not errors:
+            event = Event.objects.create(name=name, description=description, created_by=request.user)
+
+            for uid in existing_member_ids:
+                try:
+                    EventMembership.objects.get_or_create(user_id=uid, event=event)
+                except Exception:
+                    pass
+
+            for _, username, password in new_users_data:
+                u = User(username=username)
+                u.set_password(password)
+                u.save()
+                EventMembership.objects.create(user=u, event=event)
+
+            messages.success(request, f'Event "{name}" created.')
+            return redirect('event_detail', pk=event.pk)
+
+    return render(request, 'create_event.html', {
+        'all_users': all_users,
+        'errors': errors,
+        'post': request.POST,
+        'selected_ids': set(request.POST.getlist('member_ids')),
+        'new_users': new_users_data if request.method == 'POST' else [],
+    })
+
+
 # ─── Admin: Manage Events ─────────────────────────────────────────────────────
 
 @admin_required

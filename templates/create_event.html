@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Create Event — Expense Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .back { color: #64748b; text-decoration: none; font-size: 0.875rem; display: inline-block; margin-bottom: 0.25rem; }
+  .back:hover { color: #1e293b; }
+  .section-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.5rem; }
+  .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.4rem; margin-bottom: 0.5rem; }
+  .user-checkbox { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; font-weight: normal; color: #1e293b; background: white; border: 1px solid #e2e8f0; border-radius: 4px; padding: 0.35rem 0.6rem; cursor: pointer; }
+  .user-checkbox input { margin: 0; cursor: pointer; }
+  .new-user-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end; margin-bottom: 0.5rem; }
+  .new-user-row label { margin: 0; font-size: 0.875rem; }
+  #new-users-container { margin-bottom: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'dashboard' %}">← Dashboard</a>
+<h2 style="margin:.5rem 0 1.5rem">Create Event</h2>
+
+{% if errors %}
+  <div class="error-box">
+    {% for e in errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+  </div>
+{% endif %}
+
+<form method="post" class="form" style="max-width:600px">
+  {% csrf_token %}
+
+  <label>Name
+    <input type="text" name="name" value="{{ post.name|default:'' }}" required autofocus>
+  </label>
+
+  <label>Description
+    <textarea name="description" rows="2">{{ post.description|default:'' }}</textarea>
+  </label>
+
+  <div>
+    <div class="section-label">Add existing users</div>
+    {% if all_users %}
+      <div class="user-grid">
+        {% for u in all_users %}
+          <label class="user-checkbox">
+            <input type="checkbox" name="member_ids" value="{{ u.pk }}"
+              {% if u.pk|stringformat:"s" in selected_ids %}checked{% endif %}>
+            {{ u.username }}
+          </label>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="font-size:0.875rem;color:#64748b;margin:0 0 0.5rem">No existing users.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="section-label">Create new users</div>
+    <div id="new-users-container">
+      {% for idx, username, password in new_users %}
+      <div class="new-user-row" id="new-user-row-{{ idx }}">
+        <label>Username
+          <input type="text" name="new_username_{{ idx }}" value="{{ username }}" placeholder="username" autocomplete="off">
+        </label>
+        <label>Password
+          <input type="password" name="new_password_{{ idx }}" placeholder="password" autocomplete="new-password">
+        </label>
+        <button type="button" class="btn btn-danger btn-sm" style="margin-bottom:1px" onclick="removeRow({{ idx }})">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="addUserRow()">+ Add new user</button>
+  </div>
+
+  <div style="margin-top:0.5rem">
+    <button type="submit" class="btn btn-primary">Create Event</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let count = {{ new_users|length }};
+
+  function addUserRow() {
+    const container = document.getElementById('new-users-container');
+    const i = count++;
+    const row = document.createElement('div');
+    row.className = 'new-user-row';
+    row.id = `new-user-row-${i}`;
+    row.innerHTML = `
+      <label>Username<input type="text" name="new_username_${i}" placeholder="username" autocomplete="off"></label>
+      <label>Password<input type="password" name="new_password_${i}" placeholder="password" autocomplete="new-password"></label>
+      <button type="button" class="btn btn-danger btn-sm" style="margin-bottom:1px" onclick="removeRow(${i})">Remove</button>
+    `;
+    container.appendChild(row);
+  }
+
+  function removeRow(i) {
+    document.getElementById(`new-user-row-${i}`).remove();
+  }
+</script>
+{% endblock %}
