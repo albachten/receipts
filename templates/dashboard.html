@@ -34,9 +34,9 @@
 {% else %}
   <div class="grid">
     {% for item in event_data %}
-      <a href="{% url 'event_detail' item.event.pk %}" class="event-card{% if item.event.archived %} archived{% endif %}">
+      <div class="event-card{% if item.event.archived %} archived{% endif %}">
         <div class="event-name">
-          {{ item.event.name }}
+          <a href="{% url 'event_detail' item.event.pk %}" style="text-decoration:none;color:inherit">{{ item.event.name }}</a>
           {% if item.event.archived %}<span class="archived-badge">Archived</span>{% endif %}
         </div>
         {% if item.event.description %}
@@ -52,7 +52,13 @@
             <span>—</span>
           {% endif %}
         </div>
-      </a>
+        {% if item.event.archived and user.is_admin %}
+        <form method="post" action="{% url 'archive_event' item.event.pk %}" style="margin-top:0.25rem">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary btn-sm" style="width:100%">Unarchive</button>
+        </form>
+        {% endif %}
+      </div>
     {% endfor %}
   </div>
 {% endif %}
