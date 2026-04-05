@@ -2,6 +2,8 @@ services:
   app:
     build: .
     restart: unless-stopped
+    ports:
+      - "8666:8666"
     volumes:
       - db_data:/app/data
     environment:
