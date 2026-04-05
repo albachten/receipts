@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit Transaction{% else %}Add Transaction{% endif %} — {{ event.name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .back { color: #64748b; text-decoration: none; font-size: 0.875rem; }
+  .back:hover { color: #1e293b; }
+  .split-toggle { display: flex; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; max-width: 460px; }
+  .split-toggle button { flex: 1; padding: 0.5rem; border: none; background: white; cursor: pointer; font-size: 0.875rem; color: #64748b; transition: all .15s; }
+  .split-toggle button:first-child { border-right: 1px solid #d1d5db; }
+  .split-toggle button.active { background: #3b82f6; color: white; }
+  .preview { background: #f8fafc; border-radius: 6px; padding: 0.75rem 1rem; max-width: 460px; }
+  .preview-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 0.5rem; }
+  .preview-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.15rem 0; }
+  .split-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; padding: 0.25rem 0; }
+  .split-row input { width: 120px; }
+  .split-summary { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e2e8f0; }
+  .ok { color: #16a34a; font-weight: 600; }
+  .bad { color: #dc2626; font-weight: 600; }
+  #manual-splits { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'event_detail' event.pk %}">← {{ event.name }}</a>
+<h2 style="margin:.5rem 0 1.5rem">{% if editing %}Edit Transaction{% else %}Add Transaction{% endif %}</h2>
+
+{% if errors %}
+  <div class="error-box">
+    {% for e in errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+  </div>
+{% endif %}
+
+<form method="post" action="{% if editing %}{% url 'edit_transaction' event.pk editing.pk %}{% else %}{% url 'add_transaction' event.pk %}{% endif %}" class="form" id="tx-form">
+  {% csrf_token %}
+
+  <label>Description
+    <input type="text" name="description" value="{{ post.description|default:'' }}" required autofocus>
+  </label>
+
+  <label>Total Amount ($)
+    <input type="number" name="amount" id="amount" step="0.01" min="0.01"
+           value="{{ post.amount|default:'' }}" required>
+  </label>
+
+  <label>Paid by
+    <select name="paid_by">
+      {% for m in memberships %}
+        <option value="{{ m.user_id }}"
+          {% if post.paid_by == m.user_id|stringformat:"s" %}selected{% endif %}>
+          {{ m.user.username }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <input type="hidden" name="split_mode" id="split-mode-input" value="{{ post.split_mode|default:'equal' }}">
+
+  <div>
+    <div class="split-toggle">
+      <button type="button" id="btn-equal" onclick="setSplitMode('equal')">Split equally</button>
+      <button type="button" id="btn-manual" onclick="setSplitMode('manual')">Split manually</button>
+    </div>
+  </div>
+
+  <div id="equal-preview" class="preview" style="display:none">
+    <p class="preview-label">Preview (equal split)</p>
+    <div id="preview-rows"></div>
+  </div>
+
+  <div id="manual-splits" class="preview">
+    <p class="preview-label">Enter each member's share</p>
+    {% for m in memberships %}
+    <div class="split-row">
+      <span>{{ m.user.username }}</span>
+      <input type="number" name="split_{{ m.user_id }}" id="split_{{ m.user_id }}"
+             step="0.01" min="0" placeholder="0.00"
+             value="{{ post|default:'' }}" oninput="updateSplitSummary()">
+    </div>
+    {% endfor %}
+    <div class="split-summary">
+      <span>Total: <strong id="split-total">0.00</strong></span>
+      <span id="split-status"></span>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary" id="submit-btn">{% if editing %}Save Changes{% else %}Add Transaction{% endif %}</button>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const members = [
+    {% for m in memberships %}{ id: {{ m.user_id }}, name: "{{ m.user.username }}" },{% endfor %}
+  ];
+
+  function setSplitMode(mode) {
+    document.getElementById('split-mode-input').value = mode;
+    document.getElementById('btn-equal').classList.toggle('active', mode === 'equal');
+    document.getElementById('btn-manual').classList.toggle('active', mode === 'manual');
+    document.getElementById('equal-preview').style.display = mode === 'equal' ? 'block' : 'none';
+    document.getElementById('manual-splits').style.display = mode === 'manual' ? 'block' : 'none';
+    if (mode === 'equal') updateEqualPreview();
+  }
+
+  function updateEqualPreview() {
+    const amt = parseFloat(document.getElementById('amount').value) || 0;
+    const n = members.length;
+    const container = document.getElementById('preview-rows');
+    if (!amt || !n) { container.innerHTML = ''; return; }
+    const base = Math.floor(amt / n * 100) / 100;
+    const remainder = parseFloat((amt - base * n).toFixed(2));
+    container.innerHTML = members.map((m, i) => {
+      const share = (i === 0 ? base + remainder : base).toFixed(2);
+      return `<div class="preview-row"><span>${m.name}</span><span>$${share}</span></div>`;
+    }).join('');
+  }
+
+  function updateSplitSummary() {
+    const amt = parseFloat(document.getElementById('amount').value) || 0;
+    let total = 0;
+    members.forEach(m => {
+      total += parseFloat(document.getElementById('split_' + m.id).value) || 0;
+    });
+    total = parseFloat(total.toFixed(2));
+    document.getElementById('split-total').textContent = total.toFixed(2);
+    const status = document.getElementById('split-status');
+    const diff = Math.abs(total - amt);
+    if (amt > 0 && diff < 0.005) {
+      status.textContent = '✓ Matches'; status.className = 'ok';
+    } else if (amt > 0) {
+      const dir = total > amt ? 'Over' : 'Under';
+      status.textContent = `${dir} by $${diff.toFixed(2)}`; status.className = 'bad';
+    } else {
+      status.textContent = ''; status.className = '';
+    }
+  }
+
+  document.getElementById('amount').addEventListener('input', () => {
+    updateEqualPreview();
+    updateSplitSummary();
+  });
+
+  // Init
+  const initialMode = document.getElementById('split-mode-input').value || 'equal';
+  setSplitMode(initialMode);
+</script>
+{% endblock %}

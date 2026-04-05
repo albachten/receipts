@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Expense Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .event-card { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.07); padding: 1.25rem; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 0.5rem; transition: box-shadow .15s, transform .15s; }
+  .event-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-2px); }
+  .event-name { font-weight: 600; font-size: 1.05rem; }
+  .event-desc { font-size: 0.85rem; color: #64748b; flex: 1; }
+  .event-footer { display: flex; justify-content: space-between; font-size: 0.875rem; color: #64748b; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+  .empty { color: #64748b; font-style: italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Your Events</h2>
+
+{% if not event_data %}
+  <p class="empty">No events yet.{% if not user.is_admin %} Ask an administrator to add you to one.{% endif %}</p>
+{% else %}
+  <div class="grid">
+    {% for item in event_data %}
+      <a href="{% url 'event_detail' item.event.pk %}" class="event-card">
+        <div class="event-name">{{ item.event.name }}</div>
+        {% if item.event.description %}
+          <div class="event-desc">{{ item.event.description }}</div>
+        {% endif %}
+        <div class="event-footer">
+          <span>Your balance:</span>
+          {% if item.membership %}
+            <span class="{% if item.membership.balance >= 0 %}pos{% else %}neg{% endif %}">
+              {% if item.membership.balance >= 0 %}+{% endif %}{{ item.membership.balance }}
+            </span>
+          {% else %}
+            <span>—</span>
+          {% endif %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} — Expense Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+  .back { color: #64748b; text-decoration: none; font-size: 0.875rem; display: inline-block; margin-bottom: 0.25rem; }
+  .back:hover { color: #1e293b; }
+  .event-desc { color: #64748b; margin: 0.25rem 0 0; font-size: 0.875rem; }
+  .section { margin-bottom: 2rem; }
+  .section-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.75rem; }
+  .tx-card { background: white; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .tx-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; gap: 1rem; }
+  .tx-desc { font-weight: 600; flex: 1; }
+  .tx-amount { font-weight: 700; font-size: 1.05rem; white-space: nowrap; }
+  .tx-meta { font-size: 0.8rem; color: #64748b; display: flex; gap: 1rem; }
+  .tx-date { margin-left: auto; }
+  .tx-splits { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  .split-tag { background: #f1f5f9; color: #475569; font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+  .tx-actions { display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0; }
+  .empty { color: #64748b; font-style: italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a class="back" href="{% url 'dashboard' %}">← Events</a>
+    <h2 style="margin:0">{{ event.name }}</h2>
+    {% if event.description %}<p class="event-desc">{{ event.description }}</p>{% endif %}
+  </div>
+  <a href="{% url 'add_transaction' event.pk %}" class="btn btn-primary">+ Add Transaction</a>
+</div>
+
+<div class="section">
+  <div class="section-label">Balances</div>
+  <table>
+    <thead><tr><th>Member</th><th>Balance</th></tr></thead>
+    <tbody>
+      {% for m in memberships %}
+      <tr>
+        <td>{{ m.user.username }}</td>
+        <td class="{% if m.balance >= 0 %}pos{% else %}neg{% endif %}">
+          {% if m.balance >= 0 %}+{% endif %}{{ m.balance }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-label">Transactions</div>
+  {% if not transactions %}
+    <p class="empty">No transactions yet.</p>
+  {% else %}
+    {% for tx in transactions %}
+    <div class="tx-card">
+      <div class="tx-main">
+        <span class="tx-desc">{{ tx.description }}</span>
+        <span class="tx-amount">${{ tx.amount }}</span>
+        {% if user.is_admin or event.created_by == user %}
+        <div class="tx-actions">
+          <a href="{% url 'edit_transaction' event.pk tx.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+          <form method="post" action="{% url 'delete_transaction' event.pk tx.pk %}"
+                onsubmit="return confirm('Delete this transaction? This will reverse all balance changes.')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      <div class="tx-meta">
+        <span>Paid by <strong>{{ tx.paid_by.username }}</strong></span>
+        <span class="tx-date">{{ tx.created_at|date:"M j, Y" }}</span>
+      </div>
+      <div class="tx-splits">
+        {% for split in tx.splits.all %}
+          <span class="split-tag">{{ split.user.username }}: ${{ split.amount }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

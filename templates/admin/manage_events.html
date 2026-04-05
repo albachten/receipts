@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Manage Events — Expense Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .event-block { background: white; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 1px 4px rgba(0,0,0,.06); overflow: hidden; }
+  .event-header { display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 1.25rem; cursor: pointer; user-select: none; }
+  .event-header:hover { background: #f8fafc; }
+  .event-body { padding: 0 1.25rem 1.25rem; border-top: 1px solid #f1f5f9; }
+  .add-member-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.75rem; }
+  .add-member-row select { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; }
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details[open] .chevron::after { content: " ▲"; }
+  .chevron::after { content: " ▼"; color: #94a3b8; font-size: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Manage Events</h2>
+
+<div class="card">
+  <h3>Create Event</h3>
+  {% if error %}<p class="error-box">{{ error }}</p>{% endif %}
+  <form method="post" class="form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create_event">
+    <label>Name<input type="text" name="name" required autofocus></label>
+    <label>Description<textarea name="description" rows="2"></textarea></label>
+    <label>Members
+      <select name="member_ids" multiple size="5" style="height:auto">
+        {% for u in all_users %}
+          <option value="{{ u.pk }}">{{ u.username }}</option>
+        {% endfor %}
+      </select>
+      <small style="color:#64748b">Hold Ctrl / Cmd to select multiple</small>
+    </label>
+    <div><button type="submit" class="btn btn-primary">Create Event</button></div>
+  </form>
+</div>
+
+{% for event in events %}
+<details class="event-block">
+  <summary class="event-header">
+    <strong>{{ event.name }}</strong>
+    <span class="chevron"></span>
+  </summary>
+  <div class="event-body">
+    <table style="margin-top:.75rem">
+      <thead><tr><th>Member</th><th>Balance</th><th></th></tr></thead>
+      <tbody>
+        {% for m in event.memberships.all %}
+        <tr>
+          <td>{{ m.user.username }}</td>
+          <td class="{% if m.balance >= 0 %}pos{% else %}neg{% endif %}">
+            {% if m.balance >= 0 %}+{% endif %}{{ m.balance }}
+          </td>
+          <td>
+            <form method="post" style="display:inline"
+                  onsubmit="return confirm('Remove {{ m.user.username }}? They must have zero balance.')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove_member">
+              <input type="hidden" name="event_id" value="{{ event.pk }}">
+              <input type="hidden" name="user_id" value="{{ m.user_id }}">
+              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" style="color:#64748b;font-style:italic">No members yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" class="add-member-row">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_member">
+      <input type="hidden" name="event_id" value="{{ event.pk }}">
+      <select name="user_id" required>
+        <option value="">— Add member —</option>
+        {% for u in all_users %}
+          {% if u not in event.members.all %}
+            <option value="{{ u.pk }}">{{ u.username }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">Add</button>
+    </form>
+  </div>
+</details>
+{% empty %}
+<p style="color:#64748b;font-style:italic">No events yet. Create one above.</p>
+{% endfor %}
+{% endblock %}
