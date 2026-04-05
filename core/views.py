@@ -51,12 +51,17 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
+    show_archived = request.GET.get('archived') == '1'
+
     if request.user.is_admin:
-        events = Event.objects.all().prefetch_related('memberships__user')
+        qs = Event.objects.all()
     else:
-        events = Event.objects.filter(members=request.user).prefetch_related(
-            'memberships__user'
-        )
+        qs = Event.objects.filter(members=request.user)
+
+    if not show_archived:
+        qs = qs.filter(archived=False)
+
+    events = qs.prefetch_related('memberships__user').order_by('-updated_at')
 
     event_data = []
     for event in events:
@@ -65,7 +70,10 @@ def dashboard(request):
         )
         event_data.append({'event': event, 'membership': membership})
 
-    return render(request, 'dashboard.html', {'event_data': event_data})
+    return render(request, 'dashboard.html', {
+        'event_data': event_data,
+        'show_archived': show_archived,
+    })
 
 
 # ─── Event Detail ─────────────────────────────────────────────────────────────
@@ -89,6 +97,19 @@ def event_detail(request, pk):
         'memberships': memberships,
         'transactions': transactions,
     })
+
+
+# ─── Archive Event ────────────────────────────────────────────────────────────
+
+@admin_required
+def archive_event(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    if request.method == 'POST':
+        event.archived = not event.archived
+        event.save()
+        label = 'archived' if event.archived else 'unarchived'
+        messages.success(request, f'Event "{event.name}" {label}.')
+    return redirect(request.POST.get('next', 'dashboard'))
 
 
 # ─── Transaction helpers ──────────────────────────────────────────────────────

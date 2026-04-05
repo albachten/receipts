@@ -16,6 +16,8 @@ class Event(models.Model):
         User, on_delete=models.SET_NULL, null=True, related_name='created_events'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    archived = models.BooleanField(default=False)
     members = models.ManyToManyField(User, through='EventMembership', related_name='events')
 
     def __str__(self):

@@ -29,7 +29,21 @@
     <h2 style="margin:0">{{ event.name }}</h2>
     {% if event.description %}<p class="event-desc">{{ event.description }}</p>{% endif %}
   </div>
-  <a href="{% url 'add_transaction' event.pk %}" class="btn btn-primary">+ Add Transaction</a>
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    {% if not event.archived %}
+      <a href="{% url 'add_transaction' event.pk %}" class="btn btn-primary">+ Add Transaction</a>
+    {% endif %}
+    {% if user.is_admin %}
+      <form method="post" action="{% url 'archive_event' event.pk %}"
+            onsubmit="return confirm('{% if event.archived %}Unarchive{% else %}Archive{% endif %} this event?')">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button type="submit" class="btn btn-secondary btn-sm">
+          {% if event.archived %}Unarchive{% else %}Archive{% endif %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
 </div>
 
 <div class="section">
@@ -59,7 +73,7 @@
       <div class="tx-main">
         <span class="tx-desc">{{ tx.description }}</span>
         <span class="tx-amount">${{ tx.amount }}</span>
-        {% if user.is_admin or event.created_by == user %}
+        {% if not event.archived and user.is_admin or not event.archived and event.created_by == user %}
         <div class="tx-actions">
           <a href="{% url 'edit_transaction' event.pk tx.pk %}" class="btn btn-secondary btn-sm">Edit</a>
           <form method="post" action="{% url 'delete_transaction' event.pk tx.pk %}"

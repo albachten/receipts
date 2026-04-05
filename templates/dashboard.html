@@ -6,9 +6,11 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .event-card { background: white; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.07); padding: 1.25rem; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 0.5rem; transition: box-shadow .15s, transform .15s; }
   .event-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-2px); }
+  .event-card.archived { opacity: 0.6; }
   .event-name { font-weight: 600; font-size: 1.05rem; }
   .event-desc { font-size: 0.85rem; color: #64748b; flex: 1; }
   .event-footer { display: flex; justify-content: space-between; font-size: 0.875rem; color: #64748b; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+  .archived-badge { font-size: 0.7rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
   .empty { color: #64748b; font-style: italic; }
 </style>
 {% endblock %}
@@ -16,9 +18,15 @@
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
   <h2 style="margin:0">Your Events</h2>
-  {% if user.is_admin %}
-    <a href="{% url 'create_event' %}" class="btn btn-primary">+ Create Event</a>
-  {% endif %}
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    {% if user.is_admin %}
+      <a href="{% url 'create_event' %}" class="btn btn-primary">+ Create Event</a>
+    {% endif %}
+    <a href="?{% if show_archived %}{% else %}archived=1{% endif %}"
+       class="btn btn-secondary btn-sm">
+      {% if show_archived %}Hide Archived{% else %}Show Archived{% endif %}
+    </a>
+  </div>
 </div>
 
 {% if not event_data %}
@@ -26,8 +34,11 @@
 {% else %}
   <div class="grid">
     {% for item in event_data %}
-      <a href="{% url 'event_detail' item.event.pk %}" class="event-card">
-        <div class="event-name">{{ item.event.name }}</div>
+      <a href="{% url 'event_detail' item.event.pk %}" class="event-card{% if item.event.archived %} archived{% endif %}">
+        <div class="event-name">
+          {{ item.event.name }}
+          {% if item.event.archived %}<span class="archived-badge">Archived</span>{% endif %}
+        </div>
         {% if item.event.description %}
           <div class="event-desc">{{ item.event.description }}</div>
         {% endif %}
