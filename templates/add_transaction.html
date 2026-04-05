@@ -6,8 +6,8 @@
   .back { color: #64748b; text-decoration: none; font-size: 0.875rem; }
   .back:hover { color: #1e293b; }
   .split-toggle { display: flex; border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; max-width: 460px; }
-  .split-toggle button { flex: 1; padding: 0.5rem; border: none; background: white; cursor: pointer; font-size: 0.875rem; color: #64748b; transition: all .15s; }
-  .split-toggle button:first-child { border-right: 1px solid #d1d5db; }
+  .split-toggle button { flex: 1; padding: 0.5rem; border: none; background: white; cursor: pointer; font-size: 0.875rem; color: #64748b; transition: all .15s; border-right: 1px solid #d1d5db; }
+  .split-toggle button:last-child { border-right: none; }
   .split-toggle button.active { background: #3b82f6; color: white; }
   .preview { background: #f8fafc; border-radius: 6px; padding: 0.75rem 1rem; max-width: 460px; }
   .preview-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 0.5rem; }
@@ -17,7 +17,6 @@
   .split-summary { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e2e8f0; }
   .ok { color: #16a34a; font-weight: 600; }
   .bad { color: #dc2626; font-weight: 600; }
-  #manual-splits { display: none; }
 </style>
 {% endblock %}
 
@@ -38,16 +37,28 @@
     <input type="text" name="description" value="{{ post.description|default:'' }}" required autofocus>
   </label>
 
-  <label>Total Amount ($)
+  <label>Amount ($)
     <input type="number" name="amount" id="amount" step="0.01" min="0.01"
            value="{{ post.amount|default:'' }}" required>
   </label>
 
-  <label>Paid by
-    <select name="paid_by">
+  <label id="paid-by-label">Paid by
+    <select name="paid_by" id="paid-by">
       {% for m in memberships %}
         <option value="{{ m.user_id }}"
           {% if post.paid_by == m.user_id|stringformat:"s" %}selected{% endif %}>
+          {{ m.user.username }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label id="recipient-label" style="display:none">To
+    <select name="recipient" id="recipient">
+      <option value="">— Select recipient —</option>
+      {% for m in memberships %}
+        <option value="{{ m.user_id }}"
+          {% if post.recipient == m.user_id|stringformat:"s" %}selected{% endif %}>
           {{ m.user.username }}
         </option>
       {% endfor %}
@@ -60,6 +71,7 @@
     <div class="split-toggle">
       <button type="button" id="btn-equal" onclick="setSplitMode('equal')">Split equally</button>
       <button type="button" id="btn-manual" onclick="setSplitMode('manual')">Split manually</button>
+      <button type="button" id="btn-direct" onclick="setSplitMode('direct')">Direct payment</button>
     </div>
   </div>
 
@@ -68,7 +80,7 @@
     <div id="preview-rows"></div>
   </div>
 
-  <div id="manual-splits" class="preview">
+  <div id="manual-splits" class="preview" style="display:none">
     <p class="preview-label">Enter each member's share</p>
     {% for m in memberships %}
     <div class="split-row">
@@ -98,8 +110,11 @@
     document.getElementById('split-mode-input').value = mode;
     document.getElementById('btn-equal').classList.toggle('active', mode === 'equal');
     document.getElementById('btn-manual').classList.toggle('active', mode === 'manual');
+    document.getElementById('btn-direct').classList.toggle('active', mode === 'direct');
     document.getElementById('equal-preview').style.display = mode === 'equal' ? 'block' : 'none';
     document.getElementById('manual-splits').style.display = mode === 'manual' ? 'block' : 'none';
+    document.getElementById('paid-by-label').style.display = mode === 'direct' ? 'none' : 'flex';
+    document.getElementById('recipient-label').style.display = mode === 'direct' ? 'flex' : 'none';
     if (mode === 'equal') updateEqualPreview();
   }
 
@@ -141,8 +156,29 @@
     updateSplitSummary();
   });
 
+  // Also sync recipient/paid_by dropdowns for direct payment:
+  // prevent selecting the same person as sender and recipient
+  document.getElementById('paid-by').addEventListener('change', filterRecipient);
+  document.getElementById('recipient').addEventListener('change', filterPaidBy);
+
+  function filterRecipient() {
+    const paidById = document.getElementById('paid-by').value;
+    [...document.getElementById('recipient').options].forEach(opt => {
+      opt.disabled = opt.value === paidById;
+    });
+  }
+
+  function filterPaidBy() {
+    const recipientId = document.getElementById('recipient').value;
+    [...document.getElementById('paid-by').options].forEach(opt => {
+      opt.disabled = opt.value === recipientId;
+    });
+  }
+
   // Init
   const initialMode = document.getElementById('split-mode-input').value || 'equal';
   setSplitMode(initialMode);
+  filterRecipient();
+  filterPaidBy();
 </script>
 {% endblock %}

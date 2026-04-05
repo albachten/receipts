@@ -91,6 +91,46 @@ def event_detail(request, pk):
     })
 
 
+# ─── Transaction helpers ──────────────────────────────────────────────────────
+
+def _resolve_splits(post, split_mode, memberships, amount, errors):
+    """Resolve POST data into splits_data. Returns (splits_data, resolved_mode, errors)."""
+    splits_data = []
+
+    if split_mode == 'direct' and not errors:
+        recipient_id = post.get('recipient', '').strip()
+        if not recipient_id:
+            errors.append('Please select a recipient for the direct payment.')
+        else:
+            try:
+                recipient_id = int(recipient_id)
+                if not any(m.user_id == recipient_id for m in memberships):
+                    errors.append('Recipient is not a member of this event.')
+                else:
+                    splits_data = [{'user': recipient_id, 'amount': amount}]
+                    split_mode = 'manual'
+            except (ValueError, TypeError):
+                errors.append('Invalid recipient.')
+
+    elif split_mode == 'manual' and not errors:
+        total = Decimal('0')
+        for m in memberships:
+            val = post.get(f'split_{m.user_id}', '').strip()
+            try:
+                amt = Decimal(val) if val else Decimal('0')
+                splits_data.append({'user': m.user_id, 'amount': amt})
+                total += amt
+            except InvalidOperation:
+                errors.append(f'Invalid split amount for {m.user.username}.')
+                break
+        if not errors and abs(total - amount) > Decimal('0.01'):
+            errors.append(
+                f'Splits total ({total:.2f}) must equal transaction amount ({amount:.2f}).'
+            )
+
+    return splits_data, split_mode, errors
+
+
 # ─── Add Transaction ──────────────────────────────────────────────────────────
 
 @login_required
@@ -126,22 +166,7 @@ def add_transaction(request, pk):
         if not description:
             errors.append('Description is required.')
 
-        splits_data = []
-        if split_mode == 'manual' and not errors:
-            total = Decimal('0')
-            for m in memberships:
-                val = request.POST.get(f'split_{m.user_id}', '').strip()
-                try:
-                    amt = Decimal(val) if val else Decimal('0')
-                    splits_data.append({'user': m.user_id, 'amount': amt})
-                    total += amt
-                except InvalidOperation:
-                    errors.append(f'Invalid split amount for {m.user.username}.')
-                    break
-            if not errors and abs(total - amount) > Decimal('0.01'):
-                errors.append(
-                    f'Splits total ({total:.2f}) must equal transaction amount ({amount:.2f}).'
-                )
+        splits_data, split_mode, errors = _resolve_splits(request.POST, split_mode, memberships, amount, errors)
 
         if errors:
             return render(request, 'add_transaction.html', {
@@ -210,22 +235,7 @@ def edit_transaction_view(request, pk, tx_id):
         if not description:
             errors.append('Description is required.')
 
-        splits_data = []
-        if split_mode == 'manual' and not errors:
-            total = Decimal('0')
-            for m in memberships:
-                val = request.POST.get(f'split_{m.user_id}', '').strip()
-                try:
-                    amt = Decimal(val) if val else Decimal('0')
-                    splits_data.append({'user': m.user_id, 'amount': amt})
-                    total += amt
-                except InvalidOperation:
-                    errors.append(f'Invalid split amount for {m.user.username}.')
-                    break
-            if not errors and abs(total - amount) > Decimal('0.01'):
-                errors.append(
-                    f'Splits total ({total:.2f}) must equal transaction amount ({amount:.2f}).'
-                )
+        splits_data, split_mode, errors = _resolve_splits(request.POST, split_mode, memberships, amount, errors)
 
         if errors:
             return render(request, 'add_transaction.html', {
