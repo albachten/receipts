@@ -99,6 +99,28 @@ def event_detail(request, pk):
     })
 
 
+# ─── Edit Event ───────────────────────────────────────────────────────────────
+
+@admin_required
+def edit_event(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    error = None
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
+        if not name:
+            error = 'Event name is required.'
+        else:
+            event.name = name
+            event.description = description
+            event.save()
+            messages.success(request, f'Event "{name}" updated.')
+            return redirect('event_detail', pk=pk)
+
+    return render(request, 'edit_event.html', {'event': event, 'error': error})
+
+
 # ─── Archive Event ────────────────────────────────────────────────────────────
 
 @admin_required

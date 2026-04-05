@@ -34,6 +34,7 @@
       <a href="{% url 'add_transaction' event.pk %}" class="btn btn-primary">+ Add Transaction</a>
     {% endif %}
     {% if user.is_admin %}
+      <a href="{% url 'edit_event' event.pk %}" class="btn btn-secondary btn-sm">Edit</a>
       <form method="post" action="{% url 'archive_event' event.pk %}"
             onsubmit="return confirm('{% if event.archived %}Unarchive{% else %}Archive{% endif %} this event?')">
         {% csrf_token %}
