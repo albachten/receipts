@@ -35,6 +35,11 @@
     {% endif %}
     {% if user.is_admin %}
       <a href="{% url 'edit_event' event.pk %}" class="btn btn-secondary btn-sm">Edit</a>
+      <form method="post" action="{% url 'delete_event' event.pk %}"
+            onsubmit="return confirm('Permanently delete &quot;{{ event.name }}&quot; and all its transactions? This cannot be undone.')">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+      </form>
       <form method="post" action="{% url 'archive_event' event.pk %}"
             onsubmit="return confirm('{% if event.archived %}Unarchive{% else %}Archive{% endif %} this event?')">
         {% csrf_token %}

@@ -121,6 +121,19 @@ def edit_event(request, pk):
     return render(request, 'edit_event.html', {'event': event, 'error': error})
 
 
+# ─── Delete Event ─────────────────────────────────────────────────────────────
+
+@admin_required
+def delete_event(request, pk):
+    event = get_object_or_404(Event, pk=pk)
+    if request.method == 'POST':
+        name = event.name
+        event.delete()
+        messages.success(request, f'Event "{name}" deleted.')
+        return redirect('dashboard')
+    return redirect('event_detail', pk=pk)
+
+
 # ─── Archive Event ────────────────────────────────────────────────────────────
 
 @admin_required
