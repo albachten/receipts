@@ -52,10 +52,13 @@
             <span>—</span>
           {% endif %}
         </div>
-        {% if item.event.archived and user.is_admin %}
-        <form method="post" action="{% url 'archive_event' item.event.pk %}" style="margin-top:0.25rem">
+        {% if user.is_admin %}
+        <form method="post" action="{% url 'archive_event' item.event.pk %}" style="margin-top:0.25rem"
+              onsubmit="return confirm('{% if item.event.archived %}Unarchive{% else %}Archive{% endif %} this event?')">
           {% csrf_token %}
-          <button type="submit" class="btn btn-secondary btn-sm" style="width:100%">Unarchive</button>
+          <button type="submit" class="btn btn-secondary btn-sm" style="width:100%">
+            {% if item.event.archived %}Unarchive{% else %}Archive{% endif %}
+          </button>
         </form>
         {% endif %}
       </div>
