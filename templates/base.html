@@ -77,7 +77,7 @@
   <div class="links">
     <a href="{% url 'dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="active"{% endif %}>Events</a>
     {% if user.is_admin %}
-      <a href="{% url 'manage_events' %}" {% if request.resolver_match.url_name == 'manage_events' %}class="active"{% endif %}>Manage Events</a>
+      <a href="{% url 'manage_events' %}" {% if request.resolver_match.url_name in 'manage_events create_event' %}class="active"{% endif %}>Manage Events</a>
       <a href="{% url 'manage_users' %}" {% if request.resolver_match.url_name == 'manage_users' %}class="active"{% endif %}>Manage Users</a>
     {% endif %}
   </div>
