@@ -43,7 +43,7 @@
            value="{{ post.amount|default:'' }}" required>
   </label>
 
-  <label id="paid-by-label">Paid by
+  <label id="paid-by-label"><span id="paid-by-label-text">Paid by</span>
     <select name="paid_by" id="paid-by">
       {% for m in memberships %}
         <option value="{{ m.user_id }}"
@@ -125,7 +125,7 @@
     document.getElementById('btn-direct').classList.toggle('active', mode === 'direct');
     document.getElementById('equal-preview').style.display = mode === 'equal' ? 'block' : 'none';
     document.getElementById('manual-splits').style.display = mode === 'manual' ? 'block' : 'none';
-    document.getElementById('paid-by-label').style.display = mode === 'direct' ? 'none' : 'flex';
+    document.getElementById('paid-by-label-text').textContent = mode === 'direct' ? 'From' : 'Paid by';
     document.getElementById('recipient-label').style.display = mode === 'direct' ? 'flex' : 'none';
     if (mode === 'equal') updateEqualPreview();
   }
