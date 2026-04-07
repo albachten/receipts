@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
+from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Event, EventMembership, Transaction, User
@@ -50,6 +51,48 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+# ─── Profile ──────────────────────────────────────────────────────────────────
+
+@login_required
+def profile(request):
+    email_error = email_success = password_error = password_success = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'change_email':
+            email = request.POST.get('email', '').strip()
+            if not email:
+                email_error = 'Email address is required.'
+            else:
+                request.user.email = email
+                request.user.save()
+                email_success = 'Email address updated.'
+
+        elif action == 'change_password':
+            current = request.POST.get('current_password', '')
+            new = request.POST.get('new_password', '')
+            confirm = request.POST.get('confirm_password', '')
+            if not request.user.check_password(current):
+                password_error = 'Current password is incorrect.'
+            elif not new:
+                password_error = 'New password is required.'
+            elif new != confirm:
+                password_error = 'Passwords do not match.'
+            else:
+                request.user.set_password(new)
+                request.user.save()
+                update_session_auth_hash(request, request.user)
+                password_success = 'Password updated.'
+
+    return render(request, 'profile.html', {
+        'email_error': email_error,
+        'email_success': email_success,
+        'password_error': password_error,
+        'password_success': password_success,
+    })
 
 
 # ─── Dashboard ────────────────────────────────────────────────────────────────

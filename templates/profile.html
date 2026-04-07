@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Profile — Expense Manager{% endblock %}
+
+{% block content %}
+<h2>Profile</h2>
+
+<div class="card">
+  <h3>Change Email</h3>
+  {% if email_error %}<div class="error-box">{{ email_error }}</div>{% endif %}
+  {% if email_success %}<div style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:4px;padding:0.5rem 0.75rem;font-size:0.875rem;margin-bottom:0.75rem">{{ email_success }}</div>{% endif %}
+  <form method="post" class="form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="change_email">
+    <label>Email address
+      <input type="email" name="email" value="{{ user.email }}" required>
+    </label>
+    <div><button type="submit" class="btn btn-primary">Update Email</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Change Password</h3>
+  {% if password_error %}<div class="error-box">{{ password_error }}</div>{% endif %}
+  {% if password_success %}<div style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:4px;padding:0.5rem 0.75rem;font-size:0.875rem;margin-bottom:0.75rem">{{ password_success }}</div>{% endif %}
+  <form method="post" class="form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="change_password">
+    <label>Current password
+      <input type="password" name="current_password" required>
+    </label>
+    <label>New password
+      <input type="password" name="new_password" required>
+    </label>
+    <label>Confirm new password
+      <input type="password" name="confirm_password" required>
+    </label>
+    <div><button type="submit" class="btn btn-primary">Update Password</button></div>
+  </form>
+</div>
+{% endblock %}

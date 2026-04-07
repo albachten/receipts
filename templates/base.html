@@ -15,10 +15,16 @@
     nav .links { display: flex; gap: 0.5rem; flex: 1; }
     nav .links a { color: #94a3b8; text-decoration: none; font-size: 0.875rem; padding: 0.25rem 0.6rem; border-radius: 4px; transition: color .15s; }
     nav .links a:hover, nav .links a.active { color: #f1f5f9; background: #334155; }
-    nav .user { font-size: 0.875rem; color: #94a3b8; display: flex; align-items: center; gap: 0.75rem; }
-    nav .user form { margin: 0; }
-    nav .user button { background: transparent; border: 1px solid #475569; color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.875rem; }
-    nav .user button:hover { background: #334155; color: #f1f5f9; }
+    nav .user { position: relative; font-size: 0.875rem; color: #94a3b8; }
+    nav .user-trigger { cursor: pointer; display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 4px; user-select: none; }
+    nav .user-trigger:hover { background: #334155; color: #f1f5f9; }
+    nav .user-trigger::after { content: '▾'; font-size: 0.7rem; }
+    nav .user-menu { display: none; position: absolute; right: 0; top: calc(100% + 0.4rem); background: white; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 160px; z-index: 200; overflow: hidden; }
+    nav .user-menu.open { display: block; }
+    nav .user-menu a, nav .user-menu button { display: block; width: 100%; text-align: left; padding: 0.6rem 1rem; font-size: 0.875rem; color: #1e293b; background: none; border: none; cursor: pointer; text-decoration: none; box-sizing: border-box; }
+    nav .user-menu a:hover, nav .user-menu button:hover { background: #f8fafc; }
+    nav .user-menu .menu-divider { border-top: 1px solid #f1f5f9; margin: 0.25rem 0; }
+    nav .user-menu form { margin: 0; }
 
     /* Layout */
     main { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
@@ -82,10 +88,15 @@
     {% endif %}
   </div>
   <div class="user">
-    <span>{{ user.username }}</span>
-    <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-      <button type="submit">Logout</button>
-    </form>
+    <div class="user-trigger" onclick="toggleUserMenu()">{{ user.username }}</div>
+    <div class="user-menu" id="user-menu">
+      <a href="{% url 'profile' %}">Profile</a>
+      <div class="menu-divider"></div>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+      </form>
+    </div>
   </div>
 </nav>
 {% endif %}
@@ -102,5 +113,15 @@
 </main>
 
 {% block extra_scripts %}{% endblock %}
+<script>
+  function toggleUserMenu() {
+    document.getElementById('user-menu').classList.toggle('open');
+  }
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.user')) {
+      document.getElementById('user-menu')?.classList.remove('open');
+    }
+  });
+</script>
 </body>
 </html>
