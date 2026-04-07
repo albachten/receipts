@@ -315,7 +315,7 @@ def add_transaction(request, pk):
         'event': event,
         'memberships': memberships,
         'errors': [],
-        'post': {},
+        'post': {'paid_by': str(request.user.pk)},
         'equal_member_ids': _all_member_ids(memberships),
     })
 
