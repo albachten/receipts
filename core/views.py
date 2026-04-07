@@ -30,9 +30,14 @@ def login_view(request):
         return redirect('dashboard')
     error = None
     if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        try:
+            username = User.objects.get(username__iexact=username).username
+        except User.DoesNotExist:
+            pass
         user = authenticate(
             request,
-            username=request.POST.get('username'),
+            username=username,
             password=request.POST.get('password'),
         )
         if user:
