@@ -1,4 +1,4 @@
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 
 from django.contrib import messages
@@ -149,9 +149,27 @@ def archive_event(request, pk):
 
 # ─── Transaction helpers ──────────────────────────────────────────────────────
 
+def _all_member_ids(memberships):
+    return {str(m.user_id) for m in memberships}
+
+
 def _resolve_splits(post, split_mode, memberships, amount, errors):
     """Resolve POST data into splits_data. Returns (splits_data, resolved_mode, errors)."""
     splits_data = []
+
+    if split_mode == 'equal' and not errors:
+        selected_ids = set(int(i) for i in post.getlist('equal_members') if i)
+        if not selected_ids:
+            errors.append('Select at least one member to split between.')
+        else:
+            included = [m for m in memberships if m.user_id in selected_ids]
+            count = len(included)
+            base = (amount / Decimal(count)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            remainder = amount - base * count
+            for i, m in enumerate(included):
+                splits_data.append({'user': m.user_id, 'amount': base + remainder if i == 0 else base})
+            split_mode = 'manual'
+        return splits_data, split_mode, errors
 
     if split_mode == 'direct' and not errors:
         recipient_id = post.get('recipient', '').strip()
@@ -230,6 +248,7 @@ def add_transaction(request, pk):
                 'memberships': memberships,
                 'errors': errors,
                 'post': request.POST,
+                'equal_member_ids': set(request.POST.getlist('equal_members')) or _all_member_ids(memberships),
             })
 
         create_transaction(
@@ -249,6 +268,7 @@ def add_transaction(request, pk):
         'memberships': memberships,
         'errors': [],
         'post': {},
+        'equal_member_ids': _all_member_ids(memberships),
     })
 
 
@@ -300,6 +320,7 @@ def edit_transaction_view(request, pk, tx_id):
                 'errors': errors,
                 'post': request.POST,
                 'editing': tx,
+                'equal_member_ids': set(request.POST.getlist('equal_members')) or _all_member_ids(memberships),
             })
 
         update_transaction(
@@ -328,6 +349,7 @@ def edit_transaction_view(request, pk, tx_id):
         'errors': [],
         'post': prepopulated,
         'editing': tx,
+        'equal_member_ids': _all_member_ids(memberships),
     })
 
 

@@ -76,8 +76,21 @@
   </div>
 
   <div id="equal-preview" class="preview" style="display:none">
-    <p class="preview-label">Preview (equal split)</p>
-    <div id="preview-rows"></div>
+    <p class="preview-label">Split between</p>
+    {% for m in memberships %}
+    <div class="split-row">
+      <label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal">
+        <input type="checkbox" name="equal_members" value="{{ m.user_id }}"
+               {% if m.user_id|stringformat:"s" in equal_member_ids %}checked{% endif %}
+               onchange="updateEqualPreview()">
+        {{ m.user.username }}
+      </label>
+      <span id="eq-share-{{ m.user_id }}" style="font-size:0.875rem;color:#64748b"></span>
+    </div>
+    {% endfor %}
+    <div class="split-summary" id="equal-summary" style="display:none">
+      <span id="equal-error" class="bad"></span>
+    </div>
   </div>
 
   <div id="manual-splits" class="preview" style="display:none">
@@ -120,15 +133,28 @@
 
   function updateEqualPreview() {
     const amt = parseFloat(document.getElementById('amount').value) || 0;
-    const n = members.length;
-    const container = document.getElementById('preview-rows');
-    if (!amt || !n) { container.innerHTML = ''; return; }
+    const checked = members.filter(m =>
+      document.querySelector(`input[name=equal_members][value="${m.id}"]`)?.checked
+    );
+    const n = checked.length;
+    // clear all share labels first
+    members.forEach(m => { document.getElementById('eq-share-' + m.id).textContent = ''; });
+    const errEl = document.getElementById('equal-error');
+    const summaryEl = document.getElementById('equal-summary');
+    if (!n) {
+      errEl.textContent = 'Select at least one member.';
+      summaryEl.style.display = 'flex';
+      return;
+    }
+    errEl.textContent = '';
+    summaryEl.style.display = 'none';
+    if (!amt) return;
     const base = Math.floor(amt / n * 100) / 100;
     const remainder = parseFloat((amt - base * n).toFixed(2));
-    container.innerHTML = members.map((m, i) => {
+    checked.forEach((m, i) => {
       const share = (i === 0 ? base + remainder : base).toFixed(2);
-      return `<div class="preview-row"><span>${m.name}</span><span>$${share}</span></div>`;
-    }).join('');
+      document.getElementById('eq-share-' + m.id).textContent = '$' + share;
+    });
   }
 
   function updateSplitSummary() {
