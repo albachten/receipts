@@ -12,8 +12,9 @@
   .preview { background: #f8fafc; border-radius: 6px; padding: 0.75rem 1rem; max-width: 460px; }
   .preview-label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 0.5rem; }
   .preview-row { display: flex; justify-content: space-between; font-size: 0.875rem; padding: 0.15rem 0; }
-  .split-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; padding: 0.25rem 0; }
-  .split-row input { width: 120px; }
+  .split-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; padding: 0.25rem 0; }
+  .split-row .member-name { flex: 1; }
+  .split-row input[type=number] { width: 120px; margin-left: auto; }
   .split-summary { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e2e8f0; }
   .ok { color: #16a34a; font-weight: 600; }
   .bad { color: #dc2626; font-weight: 600; }
@@ -78,15 +79,13 @@
   <div id="equal-preview" class="preview" style="display:none">
     <p class="preview-label">Split between</p>
     {% for m in memberships %}
-    <div class="split-row">
-      <label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal">
-        <input type="checkbox" name="equal_members" value="{{ m.user_id }}"
-               {% if m.user_id|stringformat:"s" in equal_member_ids %}checked{% endif %}
-               onchange="updateEqualPreview()">
-        {{ m.user.username }}
-      </label>
-      <span id="eq-share-{{ m.user_id }}" style="font-size:0.875rem;color:#64748b"></span>
-    </div>
+    <label class="split-row">
+      <input type="checkbox" name="equal_members" value="{{ m.user_id }}"
+             {% if m.user_id|stringformat:"s" in equal_member_ids %}checked{% endif %}
+             onchange="updateEqualPreview()">
+      <span class="member-name">{{ m.user.username }}</span>
+      <span id="eq-share-{{ m.user_id }}" style="color:#64748b"></span>
+    </label>
     {% endfor %}
     <div class="split-summary" id="equal-summary" style="display:none">
       <span id="equal-error" class="bad"></span>
@@ -97,7 +96,7 @@
     <p class="preview-label">Enter each member's share</p>
     {% for m in memberships %}
     <div class="split-row">
-      <span>{{ m.user.username }}</span>
+      <span class="member-name">{{ m.user.username }}</span>
       <input type="number" name="split_{{ m.user_id }}" id="split_{{ m.user_id }}"
              step="0.01" min="0" placeholder="0.00"
              value="{{ post|default:'' }}" oninput="updateSplitSummary()">
