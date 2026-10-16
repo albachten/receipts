@@ -14,16 +14,16 @@
 
 {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
 
-<form method="post" class="form">
+<form method="post" class="form" autocomplete="off">
   {% csrf_token %}
   <label>Username
-    <input type="text" name="username" value="{% if post %}{{ post.username }}{% else %}{{ edited_user.username }}{% endif %}" required autofocus>
+    <input type="text" name="username" value="{% if post %}{{ post.username }}{% else %}{{ edited_user.username }}{% endif %}" required autofocus autocomplete="off" data-lpignore="true">
   </label>
   <label>Email
-    <input type="email" name="email" value="{% if post %}{{ post.email }}{% else %}{{ edited_user.email }}{% endif %}" required>
+    <input type="email" name="email" value="{% if post %}{{ post.email }}{% else %}{{ edited_user.email }}{% endif %}" required autocomplete="off" data-lpignore="true">
   </label>
   <label>New password
-    <input type="password" name="password" placeholder="Leave blank to keep current password" autocomplete="new-password">
+    <input type="password" name="password" placeholder="Leave blank to keep current password" autocomplete="new-password" data-lpignore="true">
   </label>
   <label class="inline">
     <input type="checkbox" name="is_admin"
