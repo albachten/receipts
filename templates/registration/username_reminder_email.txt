@@ -1,0 +1,9 @@
+{% autoescape off %}
+Someone (hopefully you) asked for the username of the Expense Manager account linked to this email address.
+
+Your username is: {{ username }}
+
+Sign in here: {{ login_url }}
+
+If you didn't ask for this, you can ignore this email.
+{% endautoescape %}

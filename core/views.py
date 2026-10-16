@@ -2,12 +2,16 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 
 from django.contrib import messages
+from django.core.mail import EmailMessage
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
 
+from .forms import send_in_background
 from .models import Event, EventMembership, Transaction, User
 from .services import create_transaction, delete_transaction, update_transaction
 
@@ -31,21 +35,39 @@ def login_view(request):
         return redirect('dashboard')
     error = None
     if request.method == 'POST':
-        username = request.POST.get('username', '').strip()
-        try:
-            username = User.objects.get(username__iexact=username).username
-        except User.DoesNotExist:
-            pass
+        identifier = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        account = None
+        if identifier:
+            account = User.objects.filter(username__iexact=identifier).first() or \
+                User.objects.filter(email__iexact=identifier).first()
+        # For unknown accounts this still runs a password hash, so timing doesn't reveal them.
         user = authenticate(
             request,
-            username=username,
-            password=request.POST.get('password'),
+            username=account.username if account else identifier,
+            password=password,
         )
         if user:
             login(request, user)
             return redirect(request.GET.get('next', 'dashboard'))
-        error = 'Invalid username or password.'
+        error = 'Invalid username/email or password.'
     return render(request, 'login.html', {'error': error})
+
+
+def forgot_username(request):
+    sent = False
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        if email:
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user:
+                body = render_to_string('registration/username_reminder_email.txt', {
+                    'username': user.username,
+                    'login_url': request.build_absolute_uri(reverse('login')),
+                })
+                send_in_background(EmailMessage('Your Expense Manager username', body, None, [user.email]))
+        sent = True
+    return render(request, 'registration/forgot_username.html', {'sent': sent})
 
 
 def logout_view(request):
@@ -66,6 +88,8 @@ def profile(request):
             email = request.POST.get('email', '').strip()
             if not email:
                 email_error = 'Email address is required.'
+            elif User.objects.filter(email__iexact=email).exclude(pk=request.user.pk).exists():
+                email_error = 'That email address is already used by another user.'
             else:
                 request.user.email = email
                 request.user.save()
@@ -439,6 +463,8 @@ def manage_users(request):
                 error = 'Username, email, and password are required.'
             elif User.objects.filter(username=username).exists():
                 error = f'Username "{username}" is already taken.'
+            elif User.objects.filter(email__iexact=email).exists():
+                error = f'Email "{email}" is already used by another user.'
             else:
                 u = User(username=username, email=email, is_admin=is_admin)
                 u.set_password(password)

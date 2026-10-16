@@ -119,9 +119,9 @@ Visit `http://localhost:8000`.
 
 The app runs behind an nginx reverse proxy at `https://home.albachten.com/receipts`.
 
-### 1. Set a secret key
+### 1. Create `.env` with the secrets
 
-Edit `docker-compose.yml` and replace `SECRET_KEY` with a long random string:
+Secrets never go in `docker-compose.yml` or anywhere else in git. `docker-compose.yml` loads them from `.env`, which is gitignored and dockerignored. Copy `.env.example` to `.env` and fill in `SECRET_KEY` (a long random string) and the `EMAIL_*` settings:
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(50))"
@@ -130,8 +130,10 @@ python -c "import secrets; print(secrets.token_hex(50))"
 ### 2. Build and start
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
+
+On a Synology NAS without seccomp support, use the legacy builder: `DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker-compose up -d --build`.
 
 On first start the container automatically runs migrations. The SQLite database is persisted in a named Docker volume (`db_data`).
 
@@ -161,7 +163,11 @@ The trailing slash on both `location` and `proxy_pass` strips the `/receipts` pr
 
 | Variable | Required | Description |
 |---|---|---|
-| `SECRET_KEY` | Yes | Long random string |
+| `SECRET_KEY` | Yes | Long random string (in `.env`) |
+| `EMAIL_HOST` | No | SMTP server (in `.env`); empty prints emails to the console |
+| `EMAIL_PORT` / `EMAIL_USE_TLS` | No | Default `587` / `True` (STARTTLS) |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | No | SMTP login (in `.env`) |
+| `DEFAULT_FROM_EMAIL` | No | From address, e.g. `Expense Manager <noreply@example.com>` |
 | `DEBUG` | No | `False` in production |
 | `ALLOWED_HOSTS` | Yes | Comma-separated hostnames |
 | `SCRIPT_NAME` | Yes | URL prefix, e.g. `/receipts` |
@@ -169,10 +175,6 @@ The trailing slash on both `location` and `proxy_pass` strips the `/receipts` pr
 
 ---
 
-## Environment Variables (`.env`, local dev only)
+## Environment Variables (`.env`)
 
-```
-SECRET_KEY=your-secret-key-here
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-```
+Copy `.env.example` to `.env`. For local dev, leave `EMAIL_HOST` empty so password-reset and username emails print to the runserver console.

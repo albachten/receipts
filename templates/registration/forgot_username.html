@@ -1,0 +1,16 @@
+{% extends "auth_base.html" %}
+{% block title %}Forgot Username{% endblock %}
+{% block content %}
+{% if sent %}
+<p class="sub">Check your email</p>
+<p class="success-box">If that email address belongs to an account, you'll receive an email with your username shortly.</p>
+{% else %}
+<p class="sub">Enter the email address on your account and we'll email you your username.</p>
+<form method="post">
+  {% csrf_token %}
+  <label>Email<input type="email" name="email" autocomplete="email" autofocus required></label>
+  <button type="submit">Send username</button>
+</form>
+{% endif %}
+<div class="links"><a href="{% url 'login' %}">Back to sign in</a></div>
+{% endblock %}

@@ -6,8 +6,9 @@ services:
       - "8666:8666"
     volumes:
       - ./data:/app/data
+    # Secrets (SECRET_KEY, EMAIL_*) live in .env, which is never committed. See .env.example.
+    env_file: .env
     environment:
-      SECRET_KEY: change-this-and-do-not-commit-it
       DEBUG: "False"
       ALLOWED_HOSTS: home.albachten.com
       SCRIPT_NAME: /receipts
