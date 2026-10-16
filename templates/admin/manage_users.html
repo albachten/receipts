@@ -11,7 +11,7 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="create">
     <label>Username<input type="text" name="username" required autofocus></label>
-    <label>Email<input type="email" name="email"></label>
+    <label>Email<input type="email" name="email" required></label>
     <label>Password<input type="password" name="password" required></label>
     <label class="inline">
       <input type="checkbox" name="is_admin"> Administrator

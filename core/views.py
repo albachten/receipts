@@ -435,8 +435,8 @@ def manage_users(request):
             email = request.POST.get('email', '').strip()
             password = request.POST.get('password', '')
             is_admin = request.POST.get('is_admin') == 'on'
-            if not username or not password:
-                error = 'Username and password are required.'
+            if not username or not email or not password:
+                error = 'Username, email, and password are required.'
             elif User.objects.filter(username=username).exists():
                 error = f'Username "{username}" is already taken.'
             else:
