@@ -12,26 +12,40 @@
 <a class="back" href="{% url 'manage_users' %}">← Manage Users</a>
 <h2 style="margin:.5rem 0 1.5rem">Edit User</h2>
 
-{% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+{# The password lives in its own form so password managers don't treat the details form as a login. #}
+<div class="card">
+  <h3>Details</h3>
+  {% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+  <form method="post" class="form" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update">
+    <label>Username
+      <input type="text" name="account_name" value="{% if post %}{{ post.account_name }}{% else %}{{ edited_user.username }}{% endif %}" required autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+    </label>
+    <label>Email
+      <input type="email" name="contact" value="{% if post %}{{ post.contact }}{% else %}{{ edited_user.email }}{% endif %}" required autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other">
+    </label>
+    <label class="inline">
+      <input type="checkbox" name="is_admin"
+        {% if post %}{% if post.is_admin %}checked{% endif %}{% elif edited_user.is_admin %}checked{% endif %}> Administrator
+    </label>
+    <div style="display:flex;gap:0.5rem">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
 
-<form method="post" class="form" autocomplete="off">
-  {% csrf_token %}
-  <label>Username
-    <input type="text" name="username" value="{% if post %}{{ post.username }}{% else %}{{ edited_user.username }}{% endif %}" required autofocus autocomplete="off" data-lpignore="true">
-  </label>
-  <label>Email
-    <input type="email" name="email" value="{% if post %}{{ post.email }}{% else %}{{ edited_user.email }}{% endif %}" required autocomplete="off" data-lpignore="true">
-  </label>
-  <label>New password
-    <input type="password" name="password" placeholder="Leave blank to keep current password" autocomplete="new-password" data-lpignore="true">
-  </label>
-  <label class="inline">
-    <input type="checkbox" name="is_admin"
-      {% if post %}{% if post.is_admin %}checked{% endif %}{% elif edited_user.is_admin %}checked{% endif %}> Administrator
-  </label>
-  <div style="display:flex;gap:0.5rem">
-    <button type="submit" class="btn btn-primary">Save Changes</button>
-    <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
-  </div>
-</form>
+<div class="card">
+  <h3>Set Password</h3>
+  {% if password_error %}<div class="error-box">{{ password_error }}</div>{% endif %}
+  <form method="post" class="form" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="set_password">
+    <label>New password
+      <input type="password" name="new_password" required autocomplete="new-password" data-lpignore="true" data-1p-ignore>
+    </label>
+    <div><button type="submit" class="btn btn-primary">Set Password</button></div>
+  </form>
+</div>
 {% endblock %}

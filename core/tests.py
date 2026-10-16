@@ -50,35 +50,36 @@ class AuthFlowTests(TestCase):
         self.assertContains(response, 'already used by another user')
         self.assertFalse(User.objects.filter(username='sally2').exists())
 
-    def test_edit_user_updates_fields_and_password(self):
+    def test_edit_user_updates_fields(self):
         admin = User.objects.create_user('boss', 'boss@example.com', 'boss-pass-123!', is_admin=True)
         self.client.force_login(admin)
         response = self.client.post(reverse('edit_user', args=[self.user.pk]), {
-            'username': 'sally_r', 'email': 'sally.r@example.com', 'password': 'new-pass-123!', 'is_admin': 'on',
+            'action': 'update', 'account_name': 'sally_r', 'contact': 'sally.r@example.com', 'is_admin': 'on',
         })
         self.assertRedirects(response, reverse('manage_users'))
         self.user.refresh_from_db()
         self.assertEqual(self.user.username, 'sally_r')
         self.assertEqual(self.user.email, 'sally.r@example.com')
         self.assertTrue(self.user.is_admin)
-        self.assertTrue(self.user.check_password('new-pass-123!'))
+        self.assertTrue(self.user.check_password('old-pass-123!'))
 
-    def test_edit_user_blank_password_keeps_current(self):
+    def test_edit_user_sets_password(self):
         admin = User.objects.create_user('boss', 'boss@example.com', 'boss-pass-123!', is_admin=True)
         self.client.force_login(admin)
-        self.client.post(reverse('edit_user', args=[self.user.pk]), {
-            'username': 'Sally', 'email': 'sally@example.com', 'password': '',
+        response = self.client.post(reverse('edit_user', args=[self.user.pk]), {
+            'action': 'set_password', 'new_password': 'new-pass-123!',
         })
+        self.assertRedirects(response, reverse('manage_users'))
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('old-pass-123!'))
+        self.assertTrue(self.user.check_password('new-pass-123!'))
 
     def test_edit_user_rejects_taken_username_and_email(self):
         admin = User.objects.create_user('boss', 'boss@example.com', 'boss-pass-123!', is_admin=True)
         self.client.force_login(admin)
         url = reverse('edit_user', args=[self.user.pk])
-        response = self.client.post(url, {'username': 'RAY', 'email': 'sally@example.com'})
+        response = self.client.post(url, {'action': 'update', 'account_name': 'RAY', 'contact': 'sally@example.com'})
         self.assertContains(response, 'already taken')
-        response = self.client.post(url, {'username': 'Sally', 'email': 'Ray@example.com'})
+        response = self.client.post(url, {'action': 'update', 'account_name': 'Sally', 'contact': 'Ray@example.com'})
         self.assertContains(response, 'already used by another user')
         self.user.refresh_from_db()
         self.assertEqual((self.user.username, self.user.email), ('Sally', 'sally@example.com'))
