@@ -1,18 +1,24 @@
+import math
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMessage
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 
 from .forms import send_in_background
-from .models import Event, EventMembership, Transaction, User
+from .models import Event, EventMembership, FailedLogin, Transaction, User
 from .services import create_transaction, delete_transaction, update_transaction
 
 
@@ -30,11 +36,41 @@ def admin_required(view_func):
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
+def client_ip(request):
+    # The reverse proxy overwrites X-Real-IP with the visitor's address; REMOTE_ADDR is the proxy.
+    return request.META.get('HTTP_X_REAL_IP') or request.META.get('REMOTE_ADDR')
+
+
+def lockout_minutes_left(ip):
+    """Minutes until this IP may try again, or 0 if it isn't locked out."""
+    window = timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+    recent = FailedLogin.objects.filter(ip_address=ip, created_at__gte=timezone.now() - window)
+    if recent.count() < settings.LOGIN_FAILURE_LIMIT:
+        return 0
+    # Unlocks once enough failures age out of the window to drop below the limit.
+    unlock_after = recent.order_by('-created_at')[settings.LOGIN_FAILURE_LIMIT - 1].created_at
+    return max(1, math.ceil((unlock_after + window - timezone.now()).total_seconds() / 60))
+
+
+def password_error_text(password, user=None):
+    try:
+        validate_password(password, user)
+    except ValidationError as e:
+        return ' '.join(e.messages)
+    return None
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
     error = None
     if request.method == 'POST':
+        ip = client_ip(request)
+        minutes = lockout_minutes_left(ip)
+        if minutes:
+            error = f'Too many failed sign-in attempts. Try again in {minutes} minute{"s" if minutes != 1 else ""}.'
+            return render(request, 'login.html', {'error': error}, status=429)
+
         identifier = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
         account = None
@@ -48,8 +84,13 @@ def login_view(request):
             password=password,
         )
         if user:
+            FailedLogin.objects.filter(ip_address=ip).delete()
             login(request, user)
             return redirect(request.GET.get('next', 'dashboard'))
+        FailedLogin.objects.filter(
+            created_at__lt=timezone.now() - timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+        ).delete()
+        FailedLogin.objects.create(ip_address=ip)
         error = 'Invalid username/email or password.'
     return render(request, 'login.html', {'error': error})
 
@@ -105,6 +146,8 @@ def profile(request):
                 password_error = 'New password is required.'
             elif new != confirm:
                 password_error = 'Passwords do not match.'
+            elif invalid := password_error_text(new, request.user):
+                password_error = invalid
             else:
                 request.user.set_password(new)
                 request.user.save()
@@ -465,6 +508,8 @@ def manage_users(request):
                 error = f'Username "{username}" is already taken.'
             elif User.objects.filter(email__iexact=email).exists():
                 error = f'Email "{email}" is already used by another user.'
+            elif invalid := password_error_text(password):
+                error = invalid
             else:
                 u = User(username=username, email=email, is_admin=is_admin)
                 u.set_password(password)
@@ -528,6 +573,8 @@ def edit_user(request, user_id):
             password = request.POST.get('new_password', '')
             if not password:
                 password_error = 'New password is required.'
+            elif invalid := password_error_text(password, u):
+                password_error = invalid
             else:
                 u.set_password(password)
                 u.save()

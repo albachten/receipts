@@ -22,6 +22,14 @@ class User(AbstractUser):
         return self.username
 
 
+class FailedLogin(models.Model):
+    ip_address = models.GenericIPAddressField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return f'{self.ip_address} at {self.created_at}'
+
+
 class Event(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)

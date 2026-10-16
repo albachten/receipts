@@ -68,12 +68,18 @@ CSRF_TRUSTED_ORIGINS = [o for o in _csrf_origins.split(',') if o]
 
 AUTH_USER_MODEL = 'core.User'
 
+# Nothing confidential here, so passwords only need a minimum length.
+# Brute-force guessing is limited by the login lockout below instead.
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 4},
+    },
 ]
+
+# Block an IP address from logging in after this many failures within the window.
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_LOCKOUT_MINUTES = 15
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'

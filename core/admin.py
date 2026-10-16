@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Event, EventMembership, Transaction, TransactionSplit
+from .models import User, Event, EventMembership, FailedLogin, Transaction, TransactionSplit
 
 
 @admin.register(User)
@@ -33,3 +33,8 @@ class TransactionAdmin(admin.ModelAdmin):
 @admin.register(EventMembership)
 class EventMembershipAdmin(admin.ModelAdmin):
     list_display = ['user', 'event', 'balance']
+
+
+@admin.register(FailedLogin)
+class FailedLoginAdmin(admin.ModelAdmin):
+    list_display = ['ip_address', 'created_at']

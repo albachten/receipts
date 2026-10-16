@@ -1,12 +1,14 @@
 import re
+from datetime import timedelta
 from unittest import mock
 
 from django.core import mail
 from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
-from .models import User
+from .models import FailedLogin, User
 
 
 class ImmediateThread:
@@ -102,6 +104,50 @@ class AuthFlowTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, 'Invalid username/email or password.')
 
+    # ─── Login lockout ────────────────────────────────────────────────────────
+
+    def test_lockout_after_repeated_failures_blocks_even_correct_password(self):
+        for _ in range(5):
+            self.login('sally', 'wrong')
+        response = self.login('sally', 'old-pass-123!')
+        self.assertEqual(response.status_code, 429)
+        self.assertContains(response, 'Too many failed sign-in attempts', status_code=429)
+
+    def test_lockout_is_per_ip_using_x_real_ip(self):
+        for _ in range(5):
+            self.client.post(reverse('login'), {'username': 'sally', 'password': 'wrong'},
+                             HTTP_X_REAL_IP='203.0.113.9')
+        other = self.client.post(reverse('login'), {'username': 'sally', 'password': 'old-pass-123!'},
+                                 HTTP_X_REAL_IP='198.51.100.7')
+        self.assertRedirects(other, reverse('dashboard'))
+
+    def test_lockout_expires(self):
+        for _ in range(5):
+            self.login('sally', 'wrong')
+        FailedLogin.objects.update(created_at=timezone.now() - timedelta(minutes=16))
+        self.assertRedirects(self.login('sally', 'old-pass-123!'), reverse('dashboard'))
+
+    def test_successful_login_clears_failures(self):
+        for _ in range(4):
+            self.login('sally', 'wrong')
+        self.login('sally', 'old-pass-123!')
+        self.assertFalse(FailedLogin.objects.exists())
+
+    # ─── Password rules ───────────────────────────────────────────────────────
+
+    def test_simple_passwords_allowed_if_long_enough(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('profile'), {
+            'action': 'change_password', 'current_password': 'old-pass-123!',
+            'new_password': 'abc', 'confirm_password': 'abc',
+        })
+        self.assertContains(response, 'too short')
+        response = self.client.post(reverse('profile'), {
+            'action': 'change_password', 'current_password': 'old-pass-123!',
+            'new_password': '1234', 'confirm_password': '1234',
+        })
+        self.assertContains(response, 'Password updated.')
+
     # ─── Forgot username ──────────────────────────────────────────────────────
 
     def test_forgot_username_sends_username(self):
@@ -145,11 +191,11 @@ class AuthFlowTests(TestCase):
         response = self.client.get(link, follow=True)
         self.assertContains(response, 'Choose a new password')
         response = self.client.post(response.redirect_chain[-1][0], {
-            'new_password1': 'brand-new-pass-456!',
-            'new_password2': 'brand-new-pass-456!',
+            'new_password1': 'sally',
+            'new_password2': 'sally',
         })
         self.assertRedirects(response, reverse('password_reset_complete'))
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('brand-new-pass-456!'))
+        self.assertTrue(self.user.check_password('sally'))
         # The link is single-use.
         self.assertContains(self.client.get(link, follow=True), 'invalid or has already been used')
