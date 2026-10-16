@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ edited_user.username }} — Expense Manager{% endblock %}
+
+{% block extra_head %}
+<style>
+  .back { color: #64748b; text-decoration: none; font-size: 0.875rem; display: inline-block; margin-bottom: 0.25rem; }
+  .back:hover { color: #1e293b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'manage_users' %}">← Manage Users</a>
+<h2 style="margin:.5rem 0 1.5rem">Edit User</h2>
+
+{% if error %}<div class="error-box">{{ error }}</div>{% endif %}
+
+<form method="post" class="form">
+  {% csrf_token %}
+  <label>Username
+    <input type="text" name="username" value="{% if post %}{{ post.username }}{% else %}{{ edited_user.username }}{% endif %}" required autofocus>
+  </label>
+  <label>Email
+    <input type="email" name="email" value="{% if post %}{{ post.email }}{% else %}{{ edited_user.email }}{% endif %}" required>
+  </label>
+  <label>New password
+    <input type="password" name="password" placeholder="Leave blank to keep current password" autocomplete="new-password">
+  </label>
+  <label class="inline">
+    <input type="checkbox" name="is_admin"
+      {% if post %}{% if post.is_admin %}checked{% endif %}{% elif edited_user.is_admin %}checked{% endif %}> Administrator
+  </label>
+  <div style="display:flex;gap:0.5rem">
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a href="{% url 'manage_users' %}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

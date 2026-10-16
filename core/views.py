@@ -494,6 +494,42 @@ def manage_users(request):
     return render(request, 'admin/manage_users.html', {'users': users, 'error': error})
 
 
+@admin_required
+def edit_user(request, user_id):
+    u = get_object_or_404(User, pk=user_id)
+    error = None
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        is_admin = request.POST.get('is_admin') == 'on'
+        if not username or not email:
+            error = 'Username and email are required.'
+        elif User.objects.filter(username__iexact=username).exclude(pk=u.pk).exists():
+            error = f'Username "{username}" is already taken.'
+        elif User.objects.filter(email__iexact=email).exclude(pk=u.pk).exists():
+            error = f'Email "{email}" is already used by another user.'
+        elif u == request.user and not is_admin:
+            error = 'You cannot remove your own admin access.'
+        else:
+            u.username = username
+            u.email = email
+            u.is_admin = is_admin
+            if password:
+                u.set_password(password)
+            u.save()
+            if password and u == request.user:
+                update_session_auth_hash(request, u)
+            messages.success(request, f'User "{username}" updated.')
+            return redirect('manage_users')
+
+    return render(request, 'admin/edit_user.html', {
+        'edited_user': u,
+        'error': error,
+        'post': request.POST if request.method == 'POST' else None,
+    })
+
+
 # ─── Admin: Create Event ──────────────────────────────────────────────────────
 
 @admin_required
